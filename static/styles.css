@@ -23,6 +23,10 @@ body {
   font-size: var(--font-size-regular);
 }
 
+a:visited {
+  color: inherit;
+}
+
 .container {
   max-width: 768px;
   padding: 1em;
@@ -74,6 +78,10 @@ body {
   font-family: var(--font-type-monospace);
 }
 
+.task__data {
+  flex: 1;
+}
+
 .task__name {
   margin: 0;
 }
@@ -82,6 +90,14 @@ body {
   margin: 0;
   opacity: 0.4;
   font-size: var(--font-size-small);
+}
+
+.task__button {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background-color: transparent;
+  cursor: pointer;
 }
 
 .footer {
