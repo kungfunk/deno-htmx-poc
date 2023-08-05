@@ -1,6 +1,8 @@
 {
   "version": "2",
   "remote": {
+    "https://deno.land/std@0.197.0/datetime/_common.ts": "f5c1cb784c616151a3d8198a4ab29f65b7fe5c20a105d8979bde9558c7b52910",
+    "https://deno.land/std@0.197.0/datetime/format.ts": "2d7a430ca9571e054ac181dcb950faf9ac23445e081dcb230ca37134e6eaad0c",
     "https://deno.land/x/hono@v3.3.4/adapter/deno/serve-static.ts": "ba10cf6aaf39da942b0d49c3b9877ddba69d41d414c6551d890beb1085f58eea",
     "https://deno.land/x/hono@v3.3.4/client/client.ts": "7a819af2aa9aabc746add4d01715fa37f83676fdf1b63fba1bbcd655b2d066a5",
     "https://deno.land/x/hono@v3.3.4/client/index.ts": "3ff4cf246f3543f827a85a2c84d66a025ac350ee927613629bda47e854bfb7ba",
