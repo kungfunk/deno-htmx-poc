@@ -34,25 +34,25 @@ const Layout = ({ children }: { children: any }) => html`
 </html>
 `;
 
-const TaskList = ({ tasks }: { tasks: Task[] }) => {
+const TaskList = ({ sessionId, tasks }: { sessionId: string, tasks: Task[] }) => {
   if (tasks.length === 0) return (<p class="tasklist__empty">Empty bucket, good for you!</p>);
   return (
     <ul class="tasklist" id="tasklist">{tasks.map(({id, name, is_closed, date}) =>
       <li class="task">
-        <input type="checkbox" class="task__checkbox" checked={is_closed} hx-get={"/task/" + id + "/status/" + (is_closed ? "open" : "close")}  hx-target="#tasklist" hx-swap="outerHTML" />
+        <input type="checkbox" class="task__checkbox" checked={is_closed} hx-get={`/${sessionId}/task/${id}/status/${is_closed ? "open" : "close"}`}  hx-target="#tasklist" hx-swap="outerHTML" />
         <div class="task__data">
           <p class="task__name">{name}</p>
           <p class="task__date">{date}</p>
         </div>
-        <button class="task__button" hx-delete={"/task/"+id}  hx-target="#tasklist" hx-swap="outerHTML" hx-confirm="Are you sure you wish to delete this task?">🗑️</button>
+        <button class="task__button" hx-delete={`/${sessionId}/task/${id}`}  hx-target="#tasklist" hx-swap="outerHTML" hx-confirm="Are you sure you wish to delete this task?">🗑️</button>
       </li>)}
     </ul>
   );
 }
 
-const TaskForm = () => {
+const TaskForm = ({ sessionId }: { sessionId: string}) => {
   return (
-    <form class="taskform" hx-post="/task" hx-target="#tasklist" hx-swap="outerHTML">
+    <form class="taskform" hx-post={`/${sessionId}/task`} hx-target="#tasklist" hx-swap="outerHTML">
       <input class="taskform__text" type="text" name="name" placeholder="Task name" />
       <button class="taskform__button" type="submit">Add</button>
     </form>
@@ -60,15 +60,22 @@ const TaskForm = () => {
 }
 
 app.get('/', (c) => {
+  const sessionId = Math.random().toString(36).substring(2);
+  const url = new URL(c.req.url);
+  return Response.redirect(`${url.origin}/${sessionId}`, 302);
+});
+
+app.get('/:sessionId', (c) => {
+  const sessionId = c.req.param('sessionId');
   return c.html(
     <Layout>
       <main class="container">
         <h1 class="title">Todo List 📝</h1>
         <p class="tip">💡 You can share this URL and collaborate</p>
-        <TaskForm />
-        <TaskList tasks={tasks} />
+        <TaskForm sessionId={sessionId} />
+        <TaskList sessionId={sessionId} tasks={tasks} />
         <footer class="footer">
-          <p class="footer__text">from kungfunk with ❤️ <br />
+          <p class="footer__text">from <a href="https://github.com/kungfunk">kungfunk</a> with ❤️ <br />
           <a href="https://github.com/kungfunk/deno-htmx-poc">source code</a></p>
         </footer>
       </main>
@@ -76,36 +83,40 @@ app.get('/', (c) => {
   );
 });
 
-app.post('/task', async (c) => {
-  const body = await c.req.parseBody();
+app.post('/:sessionId/task', async (c) => {
   const id = tasks.length + 1;
+  const sessionId = c.req.param('sessionId');
+  const body = await c.req.parseBody();
   const name = body.name as string;
   const date = format(new Date(), "yyyy-MM-dd hh:mm:ss.SSS");
   tasks.push({ id, is_closed: false, name, date });
-  return c.html(<TaskList tasks={tasks} />);
+  return c.html(<TaskList sessionId={sessionId} tasks={tasks} />);
 });
 
-app.get('/task/:id/status/:status', (c) => {
+app.get('/:sessionId/task/:id/status/:status', (c) => {
   const id = parseInt(c.req.param('id'));
+  const sessionId = c.req.param('sessionId');
   const is_closed = c.req.param('status') === 'close';
   const index = tasks.findIndex(task => task.id === id);
   tasks[index] = { ...tasks[index], is_closed };
-  return c.html(<TaskList tasks={tasks} />);
+  return c.html(<TaskList sessionId={sessionId} tasks={tasks} />);
 });
 
-app.put('/task/:id', async (c) => {
+app.put('/:sessionId/task/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
+  const sessionId = c.req.param('sessionId');
   const body = await c.req.parseBody();
   const name = body.name as string;
   const index = tasks.findIndex(task => task.id === id);
   tasks[index] = { ...tasks[index], name };
-  return c.html(<TaskList tasks={tasks} />);
+  return c.html(<TaskList sessionId={sessionId} tasks={tasks} />);
 });
 
-app.delete('/task/:id', (c) => {
+app.delete('/:sessionId/task/:id', (c) => {
   const id = parseInt(c.req.param('id'));
+  const sessionId = c.req.param('sessionId');
   tasks.splice(tasks.findIndex(task => task.id === id), 1);
-  return c.html(<TaskList tasks={tasks} />);
+  return c.html(<TaskList sessionId={sessionId} tasks={tasks} />);
 });
 
 app.use('/static/*', serveStatic({ root: './' }))
