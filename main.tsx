@@ -2,36 +2,54 @@
 import { Hono } from 'https://deno.land/x/hono@v3.3.4/mod.ts';
 import { jsx, html, serveStatic } from 'https://deno.land/x/hono@v3.3.4/middleware.ts';
 import { format } from "https://deno.land/std@0.197.0/datetime/format.ts";
+import { DB } from "https://deno.land/x/sqlite/mod.ts";
 
+function InitDatabase() {
+  const db = new DB("database.db");
+  db.execute("CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, sessionId TEXT, name TEXT, is_closed INTEGER, date TEXT)");
+  db.close();
+}
+
+function getTasks(sessionId: string): Task[] {
+  const db = new DB("database.db");
+  const results = db.query<[string, string, string, boolean, string]>("SELECT * FROM tasks WHERE sessionId = ?", [sessionId]);
+  const tasks = results.map(([id, sessionId, name, is_closed, date]) => ({ id, sessionId, name, is_closed, date }));
+  db.close();
+  return tasks;
+}
+
+function addTask(sessionId: string, name: string) {
+  const db = new DB("database.db");
+  const id = crypto.randomUUID();
+  const is_closed = false;
+  const date = format(new Date(), "yyyy-MM-dd hh:mm:ss.SSS");
+  const data = [id, sessionId, name, is_closed, date];
+  db.query("INSERT INTO tasks (id, sessionId, name, is_closed, date) VALUES (?, ?, ?, ?, ?)", data);
+  db.close();
+}
+
+const deleteTask = (id: string) => {
+  const db = new DB("database.db");
+  db.query("DELETE FROM tasks WHERE id = ?", [id]);
+  db.close();
+}
+
+const changeTaskStatus = (id: string, is_closed: boolean) => {
+  const db = new DB("database.db");
+  db.query("UPDATE tasks SET is_closed = ? WHERE id = ?", [is_closed, id]);
+  db.close();
+}
+
+InitDatabase();
 const app = new Hono();
 
 interface Task {
   id: string;
+  sessionId: string;
   is_closed: boolean;
   name: string;
   date: string;
 }
-
-const tasks: Task[] = [
-  {
-    id: '772d1507-eb2b-443d-9fc6-8b1f97019e03',
-    is_closed: true,
-    name: 'Lore ipsum dolor sit amet',
-    date: '2023-08-05 08:09:10.562'
-  },
-  {
-    id: '2689494d-8cae-4c9d-8a61-4e68c3cea3cb',
-    is_closed: false,
-    name: 'Cras sit amet arcu ut nunc aliquet feugiat at suscipit augue',
-    date: '2023-08-04 03:01:10.233'
-  },
-  {
-    id: '4f922163-15a4-442d-a34f-4ee5b5d38210',
-    is_closed: true,
-    name: 'Vivamus finibus nulla nec posuere lacinia. Quisque eleifend nec quam et cursus. Duis orci augue, dignissim sit amet blandit eget, porta vitae purus. ',
-    date: '2023-08-05 08:09:10.562'
-  },
-];
 
 const Layout = ({ children }: { children: any }) => html`
 <!doctype html>
@@ -49,8 +67,10 @@ const Layout = ({ children }: { children: any }) => html`
 </html>
 `;
 
-const TaskList = ({ sessionId, tasks }: { sessionId: string, tasks: Task[] }) => {
-  if (tasks.length === 0) return (<p class="tasklist__empty">Empty bucket, good for you!</p>);
+const TaskList = ({ sessionId }: { sessionId: string }) => {
+  const tasks = getTasks(sessionId);
+  console.log(tasks);
+  if (tasks.length === 0) return (<p id="tasklist" class="tasklist__empty">Empty bucket, good for you!</p>);
   return (
     <ul class="tasklist" id="tasklist">{tasks.map(({id, name, is_closed, date}) =>
       <li class="task">
@@ -88,7 +108,7 @@ app.get('/:sessionId', (c) => {
         <h1 class="title">Todo List 📝</h1>
         <p class="tip">💡 You can share this URL and collaborate</p>
         <TaskForm sessionId={sessionId} />
-        <TaskList sessionId={sessionId} tasks={tasks} />
+        <TaskList sessionId={sessionId} />
         <footer class="footer">
           <p class="footer__text">from <a href="https://github.com/kungfunk">kungfunk</a> with ❤️ <br />
           <a href="https://github.com/kungfunk/deno-htmx-poc">source code</a></p>
@@ -99,39 +119,26 @@ app.get('/:sessionId', (c) => {
 });
 
 app.post('/:sessionId/task', async (c) => {
-  const id = crypto.randomUUID();
   const sessionId = c.req.param('sessionId');
   const body = await c.req.parseBody();
   const name = body.name as string;
-  const date = format(new Date(), "yyyy-MM-dd hh:mm:ss.SSS");
-  tasks.push({ id, is_closed: false, name, date });
-  return c.html(<TaskList sessionId={sessionId} tasks={tasks} />);
+  addTask(sessionId, name);
+  return c.html(<TaskList sessionId={sessionId} />);
 });
 
 app.get('/:sessionId/task/:id/status/:status', (c) => {
   const id = c.req.param('id');
   const sessionId = c.req.param('sessionId');
   const is_closed = c.req.param('status') === 'close';
-  const index = tasks.findIndex(task => task.id === id);
-  tasks[index] = { ...tasks[index], is_closed };
-  return c.html(<TaskList sessionId={sessionId} tasks={tasks} />);
-});
-
-app.put('/:sessionId/task/:id', async (c) => {
-  const id = c.req.param('id');
-  const sessionId = c.req.param('sessionId');
-  const body = await c.req.parseBody();
-  const name = body.name as string;
-  const index = tasks.findIndex(task => task.id === id);
-  tasks[index] = { ...tasks[index], name };
-  return c.html(<TaskList sessionId={sessionId} tasks={tasks} />);
+  changeTaskStatus(id, is_closed);
+  return c.html(<TaskList sessionId={sessionId} />);
 });
 
 app.delete('/:sessionId/task/:id', (c) => {
   const id = c.req.param('id');
   const sessionId = c.req.param('sessionId');
-  tasks.splice(tasks.findIndex(task => task.id === id), 1);
-  return c.html(<TaskList sessionId={sessionId} tasks={tasks} />);
+  deleteTask(id);
+  return c.html(<TaskList sessionId={sessionId} />);
 });
 
 app.use('/static/*', serveStatic({ root: './' }))
