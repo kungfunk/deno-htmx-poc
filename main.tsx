@@ -6,16 +6,31 @@ import { format } from "https://deno.land/std@0.197.0/datetime/format.ts";
 const app = new Hono();
 
 interface Task {
-  id: number;
+  id: string;
   is_closed: boolean;
   name: string;
   date: string;
 }
 
 const tasks: Task[] = [
-  { id: 1, is_closed: true, name: 'Lore ipsum dolor sit amet', date: '2023-08-05 08:09:10.562' },
-  { id: 2, is_closed: false, name: 'Cras sit amet arcu ut nunc aliquet feugiat at suscipit augue', date: '2023-08-04 03:01:10.233' },
-  { id: 3, is_closed: true, name: 'Vivamus finibus nulla nec posuere lacinia. Quisque eleifend nec quam et cursus. Duis orci augue, dignissim sit amet blandit eget, porta vitae purus. ', date: '2023-08-05 08:09:10.562' },
+  {
+    id: '772d1507-eb2b-443d-9fc6-8b1f97019e03',
+    is_closed: true,
+    name: 'Lore ipsum dolor sit amet',
+    date: '2023-08-05 08:09:10.562'
+  },
+  {
+    id: '2689494d-8cae-4c9d-8a61-4e68c3cea3cb',
+    is_closed: false,
+    name: 'Cras sit amet arcu ut nunc aliquet feugiat at suscipit augue',
+    date: '2023-08-04 03:01:10.233'
+  },
+  {
+    id: '4f922163-15a4-442d-a34f-4ee5b5d38210',
+    is_closed: true,
+    name: 'Vivamus finibus nulla nec posuere lacinia. Quisque eleifend nec quam et cursus. Duis orci augue, dignissim sit amet blandit eget, porta vitae purus. ',
+    date: '2023-08-05 08:09:10.562'
+  },
 ];
 
 const Layout = ({ children }: { children: any }) => html`
@@ -84,7 +99,7 @@ app.get('/:sessionId', (c) => {
 });
 
 app.post('/:sessionId/task', async (c) => {
-  const id = tasks.length + 1;
+  const id = crypto.randomUUID();
   const sessionId = c.req.param('sessionId');
   const body = await c.req.parseBody();
   const name = body.name as string;
@@ -94,7 +109,7 @@ app.post('/:sessionId/task', async (c) => {
 });
 
 app.get('/:sessionId/task/:id/status/:status', (c) => {
-  const id = parseInt(c.req.param('id'));
+  const id = c.req.param('id');
   const sessionId = c.req.param('sessionId');
   const is_closed = c.req.param('status') === 'close';
   const index = tasks.findIndex(task => task.id === id);
@@ -103,7 +118,7 @@ app.get('/:sessionId/task/:id/status/:status', (c) => {
 });
 
 app.put('/:sessionId/task/:id', async (c) => {
-  const id = parseInt(c.req.param('id'));
+  const id = c.req.param('id');
   const sessionId = c.req.param('sessionId');
   const body = await c.req.parseBody();
   const name = body.name as string;
@@ -113,7 +128,7 @@ app.put('/:sessionId/task/:id', async (c) => {
 });
 
 app.delete('/:sessionId/task/:id', (c) => {
-  const id = parseInt(c.req.param('id'));
+  const id = c.req.param('id');
   const sessionId = c.req.param('sessionId');
   tasks.splice(tasks.findIndex(task => task.id === id), 1);
   return c.html(<TaskList sessionId={sessionId} tasks={tasks} />);
