@@ -15,13 +15,13 @@ interface Task {
 const db = new DB();
 db.execute("CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, sessionId TEXT, name TEXT, is_closed INTEGER, date TEXT)");
 
-export function getTasks(sessionId: string): Task[] {
+function getTasks(sessionId: string): Task[] {
   const results = db.query<[string, string, string, boolean, string]>("SELECT * FROM tasks WHERE sessionId = ?", [sessionId]);
   const tasks = results.map(([id, sessionId, name, is_closed, date]) => ({ id, sessionId, name, is_closed, date }));
   return tasks;
 }
 
-export function addTask(sessionId: string, name: string) {
+function addTask(sessionId: string, name: string) {
   const id = crypto.randomUUID();
   const is_closed = false;
   const date = format(new Date(), "yyyy-MM-dd hh:mm:ss.SSS");
@@ -29,15 +29,13 @@ export function addTask(sessionId: string, name: string) {
   db.query("INSERT INTO tasks (id, sessionId, name, is_closed, date) VALUES (?, ?, ?, ?, ?)", data);
 }
 
-export const deleteTask = (id: string) => {
+function deleteTask(id: string) {
   db.query("DELETE FROM tasks WHERE id = ?", [id]);
 }
 
-export const updateTaskStatus = (id: string, is_closed: boolean) => {
+function updateTaskStatus(id: string, is_closed: boolean) {
   db.query("UPDATE tasks SET is_closed = ? WHERE id = ?", [is_closed, id]);
 }
-
-const app = new Hono();
 
 const Layout = ({ children }: { children: any }) => html`
 <!doctype html>
@@ -57,12 +55,11 @@ const Layout = ({ children }: { children: any }) => html`
 
 const TaskList = ({ sessionId }: { sessionId: string }) => {
   const tasks = getTasks(sessionId);
-  console.log(tasks);
   if (tasks.length === 0) return (<p id="tasklist" class="tasklist__empty">Empty bucket, good for you!</p>);
   return (
     <ul class="tasklist" id="tasklist">{tasks.map(({id, name, is_closed, date}) =>
       <li class="task">
-        <input type="checkbox" class="task__checkbox" checked={is_closed} hx-get={`/${sessionId}/task/${id}/status/${is_closed ? "open" : "close"}`}  hx-target="#tasklist" hx-swap="outerHTML" />
+        <input type="checkbox" class="task__checkbox" {...(is_closed ? {"checked": true} : {})} hx-get={`/${sessionId}/task/${id}/status/${is_closed ? "open" : "close"}`}  hx-target="#tasklist" hx-swap="outerHTML" />
         <div class="task__data">
           <p class="task__name">{name}</p>
           <p class="task__date">{date}</p>
@@ -81,6 +78,8 @@ const TaskForm = ({ sessionId }: { sessionId: string}) => {
     </form>
   );
 }
+
+const app = new Hono();
 
 app.get('/', (c) => {
   const sessionId = Math.random().toString(36).substring(2);
