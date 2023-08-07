@@ -1,47 +1,8 @@
 /** @jsx jsx */
 import { Hono } from 'https://deno.land/x/hono@v3.3.4/mod.ts';
 import { jsx, html, serveStatic } from 'https://deno.land/x/hono@v3.3.4/middleware.ts';
+import { DB } from "https://deno.land/x/sqlite@v3.7.3/mod.ts";
 import { format } from "https://deno.land/std@0.197.0/datetime/format.ts";
-import { DB } from "https://deno.land/x/sqlite/mod.ts";
-
-function InitDatabase() {
-  const db = new DB("database.db");
-  db.execute("CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, sessionId TEXT, name TEXT, is_closed INTEGER, date TEXT)");
-  db.close();
-}
-
-function getTasks(sessionId: string): Task[] {
-  const db = new DB("database.db");
-  const results = db.query<[string, string, string, boolean, string]>("SELECT * FROM tasks WHERE sessionId = ?", [sessionId]);
-  const tasks = results.map(([id, sessionId, name, is_closed, date]) => ({ id, sessionId, name, is_closed, date }));
-  db.close();
-  return tasks;
-}
-
-function addTask(sessionId: string, name: string) {
-  const db = new DB("database.db");
-  const id = crypto.randomUUID();
-  const is_closed = false;
-  const date = format(new Date(), "yyyy-MM-dd hh:mm:ss.SSS");
-  const data = [id, sessionId, name, is_closed, date];
-  db.query("INSERT INTO tasks (id, sessionId, name, is_closed, date) VALUES (?, ?, ?, ?, ?)", data);
-  db.close();
-}
-
-const deleteTask = (id: string) => {
-  const db = new DB("database.db");
-  db.query("DELETE FROM tasks WHERE id = ?", [id]);
-  db.close();
-}
-
-const changeTaskStatus = (id: string, is_closed: boolean) => {
-  const db = new DB("database.db");
-  db.query("UPDATE tasks SET is_closed = ? WHERE id = ?", [is_closed, id]);
-  db.close();
-}
-
-InitDatabase();
-const app = new Hono();
 
 interface Task {
   id: string;
@@ -50,6 +11,33 @@ interface Task {
   name: string;
   date: string;
 }
+
+const db = new DB();
+db.execute("CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, sessionId TEXT, name TEXT, is_closed INTEGER, date TEXT)");
+
+export function getTasks(sessionId: string): Task[] {
+  const results = db.query<[string, string, string, boolean, string]>("SELECT * FROM tasks WHERE sessionId = ?", [sessionId]);
+  const tasks = results.map(([id, sessionId, name, is_closed, date]) => ({ id, sessionId, name, is_closed, date }));
+  return tasks;
+}
+
+export function addTask(sessionId: string, name: string) {
+  const id = crypto.randomUUID();
+  const is_closed = false;
+  const date = format(new Date(), "yyyy-MM-dd hh:mm:ss.SSS");
+  const data = [id, sessionId, name, is_closed, date];
+  db.query("INSERT INTO tasks (id, sessionId, name, is_closed, date) VALUES (?, ?, ?, ?, ?)", data);
+}
+
+export const deleteTask = (id: string) => {
+  db.query("DELETE FROM tasks WHERE id = ?", [id]);
+}
+
+export const updateTaskStatus = (id: string, is_closed: boolean) => {
+  db.query("UPDATE tasks SET is_closed = ? WHERE id = ?", [is_closed, id]);
+}
+
+const app = new Hono();
 
 const Layout = ({ children }: { children: any }) => html`
 <!doctype html>
@@ -130,7 +118,7 @@ app.get('/:sessionId/task/:id/status/:status', (c) => {
   const id = c.req.param('id');
   const sessionId = c.req.param('sessionId');
   const is_closed = c.req.param('status') === 'close';
-  changeTaskStatus(id, is_closed);
+  updateTaskStatus(id, is_closed);
   return c.html(<TaskList sessionId={sessionId} />);
 });
 
