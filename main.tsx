@@ -37,7 +37,7 @@ function updateTaskStatus(id: string, is_closed: boolean) {
   db.query("UPDATE tasks SET is_closed = ? WHERE id = ?", [is_closed, id]);
 }
 
-const Layout = ({ children }: { children: any }) => html`
+const Layout = ({ children }: { children: string }) => html`
 <!doctype html>
 <html lang="en">
   <head>
@@ -80,6 +80,7 @@ const TaskForm = ({ sessionId }: { sessionId: string}) => {
 }
 
 const app = new Hono();
+app.use('/static/*', serveStatic({ root: './' }))
 
 app.get('/', (c) => {
   const sessionId = Math.random().toString(36).substring(2);
@@ -128,5 +129,4 @@ app.delete('/:sessionId/task/:id', (c) => {
   return c.html(<TaskList sessionId={sessionId} />);
 });
 
-app.use('/static/*', serveStatic({ root: './' }))
 Deno.serve(app.fetch);

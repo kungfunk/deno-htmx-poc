@@ -1,5 +1,7 @@
 :root {
   --color-grey: #666;
+  --color-light-grey: #d1d5db;
+  --color-primary: #29adff;
   --font-size-big: 2rem;
   --font-size-regular: 1.5rem;
   --font-size-small: 1.2rem;
@@ -50,7 +52,7 @@ a:visited {
 .taskform__text {
   flex: 1;
   padding: 1em;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-light-grey);
   border-radius: 0.3em;
   font-family: var(--font-type-monospace);
 }
@@ -60,7 +62,7 @@ a:visited {
   border: 0;
   color: #fff;
   border-radius: 0.3em;
-  background-color: #29ADFF;
+  background-color: var(--color-primary);
   cursor: pointer;
 }
 
@@ -74,7 +76,7 @@ a:visited {
   gap: 1em;
   align-items: center;
   padding: 0.5em 0;
-  border-bottom: 1px solid #d1d5db;
+  border-bottom: 1px solid var(--color-light-grey);
   font-family: var(--font-type-monospace);
 }
 
